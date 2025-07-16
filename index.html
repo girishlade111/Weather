@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Girish Weather</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .weather-card {
+            backdrop-filter: blur(10px) saturate(180%);
+            -webkit-backdrop-filter: blur(10px) saturate(180%);
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            border: 1px solid rgba(209, 213, 219, 0.3);
+        }
+        .day-bg {
+            background: linear-gradient(to top, #4a90e2 0%, #87ceeb 100%);
+        }
+        .night-bg {
+            background: linear-gradient(to top, #0f2027 0%, #203a43 50%, #2c5364 100%);
+        }
+        .hourly-forecast-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; /* Firefox */
+        }
+        .hourly-forecast-container::-webkit-scrollbar {
+            display: none; /* Safari and Chrome */
+        }
+        .text-shadow {
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .social-icon {
+            transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+        }
+        .social-icon:hover {
+            transform: scale(1.1);
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body class="bg-gray-800 text-white transition-colors duration-1000">
+
+    <div id="app-container" class="min-h-screen w-full p-4 sm:p-6 lg:p-8 flex flex-col items-center day-bg">
+        
+        <!-- Loading Spinner -->
+        <div id="loader" class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-blue-400"></div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="error-message" class="hidden fixed top-5 bg-red-500 text-white py-2 px-4 rounded-lg shadow-lg z-50">
+            <p>Could not find location. Please try another city.</p>
+        </div>
+
+        <div class="w-full max-w-4xl mx-auto flex flex-col flex-grow">
+            <!-- App Title -->
+            <h1 class="text-5xl font-bold text-center mb-8 text-white text-shadow">Girish Weather</h1>
+
+            <!-- Search Bar -->
+            <div class="mb-6">
+                <form id="search-form" class="relative">
+                    <input type="text" id="search-input" placeholder="Search for a city..." class="w-full bg-white/30 text-white placeholder-white/70 px-6 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-white/50 transition">
+                    <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-white/20 transition">
+                        <i data-feather="search" class="w-6 h-6 text-white"></i>
+                    </button>
+                </form>
+            </div>
+
+            <div id="weather-content" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Current Weather -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="weather-card p-6 text-center">
+                        <p id="location-name" class="text-2xl font-bold">--</p>
+                        <p id="current-time" class="text-sm opacity-80">--</p>
+                        <img id="current-weather-icon" src="https://placehold.co/64x64/transparent/transparent" alt="Weather Icon" class="mx-auto my-4">
+                        <p id="current-temp" class="text-6xl font-bold">--°</p>
+                        <p id="current-condition" class="text-xl font-medium capitalize">--</p>
+                    </div>
+
+                    <!-- Additional Details -->
+                    <div class="weather-card p-6">
+                        <h2 class="font-bold text-lg mb-4">Details</h2>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="opacity-80 flex items-center"><i data-feather="thermometer" class="w-5 h-5 mr-2"></i>Feels Like</span>
+                                <span id="feels-like" class="font-semibold">--°</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="opacity-80 flex items-center"><i data-feather="wind" class="w-5 h-5 mr-2"></i>Wind</span>
+                                <span id="wind-speed" class="font-semibold">-- km/h</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="opacity-80 flex items-center"><i data-feather="droplet" class="w-5 h-5 mr-2"></i>Humidity</span>
+                                <span id="humidity" class="font-semibold">--%</span>
+                            </div>
+                             <div class="flex justify-between items-center">
+                                <span class="opacity-80 flex items-center"><i data-feather="sunrise" class="w-5 h-5 mr-2"></i>Sunrise</span>
+                                <span id="sunrise-time" class="font-semibold">--:--</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="opacity-80 flex items-center"><i data-feather="sunset" class="w-5 h-5 mr-2"></i>Sunset</span>
+                                <span id="sunset-time" class="font-semibold">--:--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Forecasts -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Hourly Forecast -->
+                    <div class="weather-card p-6">
+                        <h2 class="font-bold text-lg mb-4">Hourly Forecast</h2>
+                        <div class="hourly-forecast-container flex space-x-4 pb-2">
+                            <!-- Hourly items will be injected here -->
+                            <div id="hourly-forecast" class="flex space-x-4"></div>
+                        </div>
+                    </div>
+
+                    <!-- 7-Day Forecast -->
+                    <div class="weather-card p-6">
+                        <h2 class="font-bold text-lg mb-4">7-Day Forecast</h2>
+                        <div id="daily-forecast" class="space-y-3">
+                           <!-- Daily items will be injected here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Social Links Footer -->
+            <div class="mt-auto pt-8 text-center">
+                <div class="flex justify-center items-center space-x-6">
+                    <a href="https://www.instagram.com/girish_lade_/" target="_blank" class="text-white social-icon">
+                        <i data-feather="instagram" class="w-6 h-6"></i>
+                    </a>
+                    <a href="https://www.linkedin.com/in/girish-lade-075bba201/" target="_blank" class="text-white social-icon">
+                        <i data-feather="linkedin" class="w-6 h-6"></i>
+                    </a>
+                    <a href="https://github.com/girishlade111" target="_blank" class="text-white social-icon">
+                        <i data-feather="github" class="w-6 h-6"></i>
+                    </a>
+                    <a href="https://codepen.io/Girish-Lade-the-looper" target="_blank" class="text-white social-icon">
+                        <i data-feather="codepen" class="w-6 h-6"></i>
+                    </a>
+                    <a href="mailto:girishlade111@gmail.com" class="text-white social-icon">
+                        <i data-feather="mail" class="w-6 h-6"></i>
+                    </a>
+                </div>
+                <p class="text-sm mt-4 opacity-70">Developed by Girish Lade</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const searchForm = document.getElementById('search-form');
+        const searchInput = document.getElementById('search-input');
+        const loader = document.getElementById('loader');
+        const errorMessage = document.getElementById('error-message');
+        const appContainer = document.getElementById('app-container');
+        const weatherContent = document.getElementById('weather-content');
+
+        // Current Weather Elements
+        const locationName = document.getElementById('location-name');
+        const currentTime = document.getElementById('current-time');
+        const currentWeatherIcon = document.getElementById('current-weather-icon');
+        const currentTemp = document.getElementById('current-temp');
+        const currentCondition = document.getElementById('current-condition');
+        
+        // Details Elements
+        const feelsLike = document.getElementById('feels-like');
+        const windSpeed = document.getElementById('wind-speed');
+        const humidity = document.getElementById('humidity');
+        const sunriseTime = document.getElementById('sunrise-time');
+        const sunsetTime = document.getElementById('sunset-time');
+
+        // Forecast Elements
+        const hourlyForecastContainer = document.getElementById('hourly-forecast');
+        const dailyForecastContainer = document.getElementById('daily-forecast');
+
+        // --- API Configuration ---
+        const apiKey = "d67ec7dd237d4276b23222656251607";
+        const apiUrl = "https://api.weatherapi.com/v1/forecast.json";
+
+        // --- Functions ---
+
+        /**
+         * Fetches weather data from the API for a given location.
+         * @param {string} location - The city name or coordinates.
+         */
+        async function getWeatherData(location) {
+            showLoader();
+            try {
+                // Encode the location to handle spaces and special characters
+                const encodedLocation = encodeURIComponent(location);
+                const response = await fetch(`${apiUrl}?key=${apiKey}&q=${encodedLocation}&days=7&aqi=no&alerts=no`);
+                
+                if (!response.ok) {
+                    // Get error message from API if available
+                    const errorData = await response.json().catch(() => null);
+                    const errorMessageText = errorData?.error?.message || `HTTP error! status: ${response.status}`;
+                    throw new Error(errorMessageText);
+                }
+
+                const data = await response.json();
+                updateUI(data);
+                hideError();
+            } catch (error) {
+                console.error("Error fetching weather data:", error);
+                showError(error.message);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        /**
+         * Updates the entire UI with the fetched weather data.
+         * @param {object} data - The weather data from the API.
+         */
+        function updateUI(data) {
+            // Update Background
+            updateBackground(data.current.is_day);
+
+            // Update Current Weather
+            locationName.textContent = `${data.location.name}, ${data.location.country}`;
+            const localTime = new Date(data.location.localtime);
+            currentTime.textContent = localTime.toLocaleDateString(undefined, { weekday: 'long', hour: '2-digit', minute: '2-digit' });
+            currentWeatherIcon.src = `https:${data.current.condition.icon}`;
+            currentWeatherIcon.alt = data.current.condition.text;
+            currentTemp.textContent = `${Math.round(data.current.temp_c)}°`;
+            currentCondition.textContent = data.current.condition.text;
+
+            // Update Details
+            feelsLike.textContent = `${Math.round(data.current.feelslike_c)}°`;
+            windSpeed.textContent = `${data.current.wind_kph} km/h`;
+            humidity.textContent = `${data.current.humidity}%`;
+            sunriseTime.textContent = data.forecast.forecastday[0].astro.sunrise;
+            sunsetTime.textContent = data.forecast.forecastday[0].astro.sunset;
+
+            // Update Hourly Forecast
+            updateHourlyForecast(data.forecast.forecastday, localTime);
+
+            // Update Daily Forecast
+            updateDailyForecast(data.forecast.forecastday);
+        }
+
+        /**
+         * Updates the background based on day/night.
+         * @param {number} isDay - 1 for day, 0 for night.
+         */
+        function updateBackground(isDay) {
+            if (isDay) {
+                appContainer.classList.remove('night-bg');
+                appContainer.classList.add('day-bg');
+            } else {
+                appContainer.classList.remove('day-bg');
+                appContainer.classList.add('night-bg');
+            }
+        }
+
+        /**
+         * Populates the hourly forecast section.
+         * @param {Array} forecastDays - Array of daily forecast objects.
+         * @param {Date} localTime - The current local time at the location.
+         */
+        function updateHourlyForecast(forecastDays, localTime) {
+            hourlyForecastContainer.innerHTML = '';
+            const currentHour = localTime.getHours();
+            
+            // Get hours from today starting from the current hour
+            let upcomingHours = forecastDays[0].hour.filter(hour => new Date(hour.time_epoch * 1000).getHours() >= currentHour);
+
+            // If we need more hours, get them from the next day
+            if (upcomingHours.length < 8 && forecastDays.length > 1) {
+                const remainingHoursNeeded = 8 - upcomingHours.length;
+                upcomingHours.push(...forecastDays[1].hour.slice(0, remainingHoursNeeded));
+            }
+
+            upcomingHours.slice(0, 8).forEach(hour => {
+                const hourDiv = document.createElement('div');
+                hourDiv.className = 'flex flex-col items-center space-y-1 flex-shrink-0 w-20';
+                const time = new Date(hour.time_epoch * 1000);
+                
+                hourDiv.innerHTML = `
+                    <p class="text-sm opacity-80">${time.getHours() === currentHour ? 'Now' : time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false})}</p>
+                    <img src="https:${hour.condition.icon}" alt="${hour.condition.text}" class="w-10 h-10">
+                    <p class="font-semibold">${Math.round(hour.temp_c)}°</p>
+                `;
+                hourlyForecastContainer.appendChild(hourDiv);
+            });
+        }
+
+
+        /**
+         * Populates the 7-day forecast section.
+         * @param {Array} dailyData - Array of daily forecast objects.
+         */
+        function updateDailyForecast(dailyData) {
+            dailyForecastContainer.innerHTML = '';
+            dailyData.forEach((day, index) => {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'flex justify-between items-center';
+                const date = new Date(day.date_epoch * 1000); // Use epoch for reliable date creation
+                const dayName = index === 0 ? 'Today' : date.toLocaleDateString(undefined, { weekday: 'long' });
+
+                dayDiv.innerHTML = `
+                    <span class="w-1/3 opacity-80">${dayName}</span>
+                    <div class="w-1/3 flex items-center justify-center">
+                        <img src="https:${day.day.condition.icon}" alt="${day.day.condition.text}" class="w-8 h-8 mr-2">
+                        <span class="text-sm capitalize">${day.day.condition.text}</span>
+                    </div>
+                    <div class="w-1/3 text-right">
+                        <span class="font-semibold">${Math.round(day.day.maxtemp_c)}°</span>
+                        <span class="opacity-60 ml-1">${Math.round(day.day.mintemp_c)}°</span>
+                    </div>
+                `;
+                dailyForecastContainer.appendChild(dayDiv);
+            });
+        }
+
+        // --- Utility Functions ---
+        function showLoader() {
+            weatherContent.classList.add('hidden');
+            loader.classList.remove('hidden');
+        }
+
+        function hideLoader() {
+            loader.classList.add('hidden');
+            weatherContent.classList.remove('hidden');
+        }
+
+        function showError(message = "Could not find location. Please try another city.") {
+            errorMessage.querySelector('p').textContent = message;
+            errorMessage.classList.remove('hidden');
+            setTimeout(() => {
+                errorMessage.classList.add('hidden');
+            }, 3000);
+        }
+
+        function hideError() {
+            errorMessage.classList.add('hidden');
+        }
+
+        // --- Event Listeners ---
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const location = searchInput.value.trim();
+            if (location) {
+                getWeatherData(location);
+                searchInput.value = '';
+            }
+        });
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            feather.replace(); // Initialize Feather Icons
+            // Fetch weather for a default location on initial load
+            getWeatherData('pandharpur, maharashtra');
+        });
+    </script>
+</body>
+</html>
